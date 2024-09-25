@@ -5,6 +5,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
 import { setupSwagger } from './swagger.config';
+import { ZoomService } from './zoom.service';
 
 //#region App Setup
 const app = express();
@@ -21,8 +22,156 @@ setupSwagger(app, BASE_URL);
 
 //#endregion App Setup
 
-//#region Code here
-console.log('Hello world');
+//#region Code with Swagger Annotations
+
+/**
+ * @swagger
+ * /user/{userId}/meetings:
+ *   get:
+ *     summary: Retrieve all meetings for a user
+ *     description: Get a list of all scheduled meetings for a specific user by their userId or email.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The user's Zoom ID or email address.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A list of meetings.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 meetings:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: The meeting ID.
+ *                       topic:
+ *                         type: string
+ *                         description: The meeting topic.
+ *                       start_time:
+ *                         type: string
+ *                         format: date-time
+ *                         description: The start time of the meeting.
+ *       500:
+ *         description: Failed to retrieve user meetings.
+ */
+app.get('/user/:userId/meetings', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const meetings = await ZoomService.getUserMeetings(userId);
+    res.json(meetings);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Failed to get user meetings' });
+  }
+});
+
+/**
+ * @swagger
+ * /meeting/{meetingId}/participants:
+ *   get:
+ *     summary: Get participants of a meeting
+ *     description: Retrieve the list of participants for a specific Zoom meeting by its meetingId.
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         description: The meeting ID.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A list of participants.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 participants:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: The participant's ID.
+ *                       name:
+ *                         type: string
+ *                         description: The participant's name.
+ *                       join_time:
+ *                         type: string
+ *                         format: date-time
+ *                         description: The time the participant joined the meeting.
+ *       500:
+ *         description: Failed to retrieve meeting participants.
+ */
+app.get('/meeting/:meetingId/participants', async (req, res) => {
+  const { meetingId } = req.params;
+  try {
+    const participants = await ZoomService.getMeetingParticipants(meetingId);
+    res.json(participants);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Failed to get meeting participants' });
+  }
+});
+
+/**
+ * @swagger
+ * /meeting/{meetingId}/details:
+ *   get:
+ *     summary: Get meeting details
+ *     description: Retrieve the details of a specific Zoom meeting by its meetingId.
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         description: The meeting ID.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The details of the meeting.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   description: The meeting ID.
+ *                 topic:
+ *                   type: string
+ *                   description: The topic of the meeting.
+ *                 start_time:
+ *                   type: string
+ *                   format: date-time
+ *                   description: The scheduled start time of the meeting.
+ *                 duration:
+ *                   type: integer
+ *                   description: The duration of the meeting in minutes.
+ *       500:
+ *         description: Failed to retrieve meeting details.
+ */
+app.get('/meeting/:meetingId/details', async (req, res) => {
+  const { meetingId } = req.params;
+  try {
+    const meetingDetails = await ZoomService.getMeetingDetails(meetingId);
+    res.json(meetingDetails);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Failed to get meeting details' });
+  }
+});
+
 //#endregion
 
 //#region Server Setup
@@ -92,7 +241,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.log(`${'\x1b[31m'}`); // start color red
   console.log(`${err.message}`);
   console.log(`${'\x1b][0m]'}`); //stop color
-  
+
   return res
     .status(500)
     .send({ success: false, status: 500, message: err.message });
